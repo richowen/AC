@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>ac-controller</Name>
+  <Repository>ghcr.io/richowen/ac:latest</Repository>
+  <Registry>https://github.com/richowen/AC/pkgs/container/ac</Registry>
+  <Network>bridge</Network>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/richowen/AC</Support>
+  <Project>https://github.com/richowen/AC</Project>
+  <Overview>AC Controller — bang-bang thermostat that controls your AC unit via Home Assistant. Replaces the Node-RED AC flow with a proper FSM including hysteresis, debounce, anti-short-cycle, and a staleness watchdog. Managed via a web UI with live WebSocket updates.</Overview>
+  <Category>HomeAutomation:</Category>
+  <WebUI>http://[IP]:[PORT:8765]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/richowen/AC/main/ac-controller/unraid-template.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/richowen/AC/main/ac-controller/icon.png</Icon>
+  <ExtraParams>--restart=unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+
+  <!-- Port -->
+  <Config Name="Web UI Port" Target="8000" Default="8765" Mode="tcp" Description="Port to access the AC Controller web interface." Type="Port" Display="always" Required="true" Mask="false">8765</Config>
+
+  <!-- Volumes -->
+  <Config Name="Data Directory" Target="/data" Default="/mnt/user/appdata/ac-controller" Mode="rw" Description="Persistent storage for the SQLite database and config.yaml." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/ac-controller</Config>
+
+  <!-- Environment Variables -->
+  <Config Name="Home Assistant URL" Target="HA_URL" Default="http://192.168.1.3:8123" Mode="" Description="Base URL of your Home Assistant instance." Type="Variable" Display="always" Required="true" Mask="false">http://192.168.1.3:8123</Config>
+
+  <Config Name="Home Assistant Long-Lived Token" Target="HA_TOKEN" Default="" Mode="" Description="Long-lived access token from your Home Assistant profile page (Profile → Long-Lived Access Tokens → Create Token)." Type="Variable" Display="always" Required="true" Mask="true"></Config>
+
+  <Config Name="Timezone" Target="TZ" Default="Europe/London" Mode="" Description="Timezone for schedule evaluation and log timestamps. E.g. Europe/London, America/New_York." Type="Variable" Display="always" Required="false" Mask="false">Europe/London</Config>
+</Container>
