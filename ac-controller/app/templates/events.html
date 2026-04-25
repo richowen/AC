@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-xl font-bold">Event Log</h1>
+  <span class="text-xs text-gray-500">Last 100 events</span>
+</div>
+
+{% if events %}
+<div class="rounded-2xl bg-gray-800/60 border border-gray-700 overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-gray-700 text-xs text-gray-400 uppercase tracking-wide">
+        <th class="px-4 py-3 text-left">Time</th>
+        <th class="px-4 py-3 text-left">Action</th>
+        <th class="px-4 py-3 text-left">Reason</th>
+        <th class="px-4 py-3 text-right">Room</th>
+        <th class="px-4 py-3 text-right">Outdoor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in events %}
+      <tr class="border-b border-gray-700/50 hover:bg-gray-700/30 transition
+        {% if 'cool' in e.action %}text-blue-300
+        {% elif 'heat' in e.action %}text-orange-300
+        {% elif 'off' in e.action %}text-gray-400
+        {% else %}text-gray-200{% endif %}">
+        <td class="px-4 py-2 tabular-nums text-xs text-gray-400 whitespace-nowrap">
+          {{ e.ts | int | datetimeformat }}
+        </td>
+        <td class="px-4 py-2 font-mono text-xs font-semibold">{{ e.action }}</td>
+        <td class="px-4 py-2 text-xs text-gray-300 max-w-xs truncate">{{ e.reason }}</td>
+        <td class="px-4 py-2 text-right tabular-nums text-xs">
+          {% if e.room_temp is not none %}{{ "%.1f"|format(e.room_temp) }}°C{% else %}—{% endif %}
+        </td>
+        <td class="px-4 py-2 text-right tabular-nums text-xs">
+          {% if e.outdoor_temp is not none %}{{ "%.1f"|format(e.outdoor_temp) }}°C{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-gray-500 text-sm">No events recorded yet.</p>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Add a Jinja filter equivalent for timestamps in the browser
+  // (Jinja datetimeformat filter is defined in pages.py)
+</script>
+{% endblock %}

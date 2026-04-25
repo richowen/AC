@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 class="text-xl font-bold mb-6">Settings</h1>
+
+<!-- Schedule -->
+<div class="rounded-2xl bg-gray-800/60 border border-gray-700 p-6 mb-6">
+  <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-4">Schedule</h2>
+  <form hx-post="/action/schedule" hx-target="#settings-feedback" hx-swap="innerHTML"
+        class="flex flex-wrap gap-4 items-end">
+    <label class="flex items-center gap-2 text-sm">
+      <input type="checkbox" name="enabled" value="on"
+             {% if cfg.schedule.enabled %}checked{% endif %}
+             class="rounded accent-indigo-500">
+      <span class="text-gray-300">Enabled</span>
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-gray-400">Start time</span>
+      <input type="time" name="start" value="{{ cfg.schedule.start }}"
+             class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-gray-400">End time</span>
+      <input type="time" name="end" value="{{ cfg.schedule.end }}"
+             class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </label>
+    <button type="submit"
+      class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition">
+      Save
+    </button>
+  </form>
+</div>
+
+<!-- Control parameters -->
+<div class="rounded-2xl bg-gray-800/60 border border-gray-700 p-6 mb-6">
+  <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-4">Control Parameters</h2>
+  <form hx-post="/action/control" hx-target="#settings-feedback" hx-swap="innerHTML"
+        class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-gray-400">Hysteresis (°C)</span>
+      <input type="number" name="hysteresis" step="0.5" min="0" max="5"
+             value="{{ '%.1f'|format(cfg.control.hysteresis) }}"
+             class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-gray-400">Debounce (seconds)</span>
+      <input type="number" name="debounce_seconds" min="0" max="3600"
+             value="{{ cfg.control.debounce_seconds }}"
+             class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-gray-400">Min cycle (seconds)</span>
+      <input type="number" name="min_cycle_seconds" min="0" max="7200"
+             value="{{ cfg.control.min_cycle_seconds }}"
+             class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-gray-400">Stale sensor (seconds)</span>
+      <input type="number" name="stale_sensor_seconds" min="60" max="7200"
+             value="{{ cfg.control.stale_sensor_seconds }}"
+             class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </label>
+    <label class="flex items-center gap-2 text-sm col-span-2 sm:col-span-1 pt-5">
+      <input type="checkbox" name="cool_outdoor_gate_enabled" value="on"
+             {% if cfg.cooling_outdoor_gate.enabled %}checked{% endif %}
+             class="rounded accent-indigo-500">
+      <span class="text-gray-300">Outdoor gate for cooling</span>
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-gray-400">Min outdoor temp to cool (°C)</span>
+      <input type="number" name="min_outdoor_c" step="0.5"
+             value="{{ '%.1f'|format(cfg.cooling_outdoor_gate.min_outdoor_c) }}"
+             class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </label>
+    <div class="col-span-2 sm:col-span-3 flex">
+      <button type="submit"
+        class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition">
+        Save
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Entity IDs (read-only, edit via config.yaml) -->
+<div class="rounded-2xl bg-gray-800/60 border border-gray-700 p-6 mb-6">
+  <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-1">HA Entities</h2>
+  <p class="text-xs text-gray-500 mb-4">Edit via <code>config.yaml</code> and restart the container.</p>
+  <dl class="grid grid-cols-1 gap-1 text-xs font-mono">
+    <div class="flex gap-2"><dt class="text-gray-400 w-36">room_temp</dt><dd class="text-gray-200">{{ cfg.entities.room_temp }}</dd></div>
+    <div class="flex gap-2"><dt class="text-gray-400 w-36">outdoor_temp</dt><dd class="text-gray-200">{{ cfg.entities.outdoor_temp }}</dd></div>
+    <div class="flex gap-2"><dt class="text-gray-400 w-36">ac_power</dt><dd class="text-gray-200">{{ cfg.entities.ac_power }}</dd></div>
+    <div class="flex gap-2"><dt class="text-gray-400 w-36">ac_climate</dt><dd class="text-gray-200">{{ cfg.entities.ac_climate }}</dd></div>
+    <div class="flex gap-2"><dt class="text-gray-400 w-36">bypass</dt><dd class="text-gray-200">{{ cfg.entities.bypass }}</dd></div>
+  </dl>
+</div>
+
+<!-- Feedback area (HTMX target) -->
+<div id="settings-feedback" class="text-sm text-green-400 min-h-6"></div>
+
+{% endblock %}

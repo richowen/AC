@@ -1,0 +1,81 @@
+{% set mode = state.committed_mode %}
+{% set pending = state.pending_mode %}
+
+<!-- Stale / Alarm banner -->
+{% if state.sensor_stale %}
+<div class="mb-4 rounded-lg bg-red-900 border border-red-500 px-4 py-3 text-red-200 text-sm font-semibold">
+  ⚠ Sensor stale — AC forced OFF. Check <code>{{ state.room_temp }}</code> probe.
+</div>
+{% endif %}
+
+{% if not state.ha_connected %}
+<div class="mb-4 rounded-lg bg-yellow-900 border border-yellow-500 px-4 py-3 text-yellow-200 text-sm font-semibold">
+  ⚠ Home Assistant disconnected — controller holding last state.
+</div>
+{% endif %}
+
+<!-- Temperature row -->
+<div class="grid grid-cols-2 gap-4 mb-6">
+  <div class="rounded-xl bg-gray-800 p-5 text-center">
+    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Room</p>
+    <p id="room-temp" class="text-4xl font-bold tracking-tight">
+      {% if state.room_temp is not none %}{{ "%.1f"|format(state.room_temp) }}°C{% else %}—{% endif %}
+    </p>
+    <p class="text-xs text-gray-500 mt-1">
+      Heat &lt; {{ "%.1f"|format(state.heat_below) }}°C &nbsp;·&nbsp; Cool &gt; {{ "%.1f"|format(state.cool_above) }}°C
+    </p>
+  </div>
+  <div class="rounded-xl bg-gray-800 p-5 text-center">
+    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Outdoor</p>
+    <p id="outdoor-temp" class="text-4xl font-bold tracking-tight">
+      {% if state.outdoor_temp is not none %}{{ "%.1f"|format(state.outdoor_temp) }}°C{% else %}—{% endif %}
+    </p>
+    <p class="text-xs text-gray-500 mt-1">
+      {% if not state.in_schedule %}Outside schedule{% elif not state.bypass_on %}Bypass off{% else %}Monitoring{% endif %}
+    </p>
+  </div>
+</div>
+
+<!-- Mode + status row -->
+<div class="flex items-center gap-3 mb-4">
+  <!-- Current committed mode badge -->
+  <span class="px-4 py-1.5 rounded-full text-sm font-semibold uppercase tracking-wide
+    {% if mode == 'off' %}bg-gray-600{% elif mode == 'heat' %}bg-orange-600{% elif mode == 'cool' %}bg-blue-600{% endif %}">
+    {% if mode == 'off' %}Off{% elif mode == 'heat' %}🔥 Heating{% elif mode == 'cool' %}❄️ Cooling{% endif %}
+  </span>
+
+  <!-- Pending indicator -->
+  {% if pending %}
+  <span class="flex items-center gap-1.5 text-xs text-yellow-300 pending-dot">
+    <span class="inline-block w-2 h-2 rounded-full bg-yellow-400"></span>
+    Pending: {{ pending }} (debouncing…)
+  </span>
+  {% endif %}
+
+  <!-- Reason -->
+  <span class="ml-auto text-xs text-gray-400 italic truncate max-w-xs">{{ state.reason }}</span>
+</div>
+
+<!-- Override buttons -->
+<div class="flex gap-2 flex-wrap">
+  <button hx-post="/action/override/auto"   hx-target="#status-card" hx-swap="outerHTML"
+    class="px-4 py-2 rounded-lg text-sm font-medium transition
+      {% if state.override == 'auto' %}bg-green-600 text-white{% else %}bg-gray-700 hover:bg-gray-600 text-gray-200{% endif %}">
+    Auto
+  </button>
+  <button hx-post="/action/override/off"    hx-target="#status-card" hx-swap="outerHTML"
+    class="px-4 py-2 rounded-lg text-sm font-medium transition
+      {% if state.override == 'off' %}bg-gray-500 text-white ring-2 ring-white{% else %}bg-gray-700 hover:bg-gray-600 text-gray-200{% endif %}">
+    Force Off
+  </button>
+  <button hx-post="/action/override/heat"   hx-target="#status-card" hx-swap="outerHTML"
+    class="px-4 py-2 rounded-lg text-sm font-medium transition
+      {% if state.override == 'heat' %}bg-orange-500 text-white ring-2 ring-white{% else %}bg-gray-700 hover:bg-gray-600 text-gray-200{% endif %}">
+    🔥 Force Heat
+  </button>
+  <button hx-post="/action/override/cool"   hx-target="#status-card" hx-swap="outerHTML"
+    class="px-4 py-2 rounded-lg text-sm font-medium transition
+      {% if state.override == 'cool' %}bg-blue-500 text-white ring-2 ring-white{% else %}bg-gray-700 hover:bg-gray-600 text-gray-200{% endif %}">
+    ❄️ Force Cool
+  </button>
+</div>

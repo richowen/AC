@@ -1,0 +1,816 @@
+[
+    {
+        "id": "a690123d05be35bf",
+        "type": "tab",
+        "label": "Temp Control",
+        "disabled": true,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "196421be800365f0",
+        "type": "api-current-state",
+        "z": "a690123d05be35bf",
+        "name": "Temp",
+        "server": "2f5e82bb.678dde",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sensor.0xa4c138cfaad13a80_temperature",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 610,
+        "y": 200,
+        "wires": [
+            [
+                "b4d9205d25799752"
+            ]
+        ]
+    },
+    {
+        "id": "b4d9205d25799752",
+        "type": "function",
+        "z": "a690123d05be35bf",
+        "name": "5 min Persistence",
+        "func": "const temp = parseFloat(msg.payload);\nconst now = Date.now();\nconst DELAY_MS = 5 * 60 * 1000; // 5 minutes\n\n// Input validation\nif (isNaN(temp) || temp < -10 || temp > 60) {\n    node.status({ fill: 'red', shape: 'ring', text: 'bad temp input' });\n    return null;\n}\n\n// Handle daily reset\nif (msg.topic === 'daily_reset') {\n    context.set('tempState', null);\n    node.status({ fill: 'blue', shape: 'dot', text: 'daily reset' });\n    return null;\n}\n\n// Load stored state\nconst tempState = context.get('tempState') || {};\nconst lastMode = tempState.mode || 'off';\nconst lastChangeTime = tempState.changeTime || now;\n\n// Determine required mode with hysteresis\nlet requiredMode = 'off';\n\nif (temp > 23) {\n    requiredMode = 'cooling';\n} else if (temp < 21) {\n    requiredMode = 'heating';\n} else {\n    // Intermediate range: hold mode if within hysteresis window\n    if (lastMode === 'cooling' && temp > 22) {\n        requiredMode = 'cooling';\n    } else if (lastMode === 'heating' && temp < 22) {\n        requiredMode = 'heating';\n    } else {\n        requiredMode = 'off';\n    }\n}\n\n// Determine status label\nlet currentState;\nif (requiredMode === 'cooling') {\n    currentState = 'needs_cooling';\n} else if (requiredMode === 'heating') {\n    currentState = 'needs_heating';\n} else {\n    currentState = 'comfortable';\n}\n\n// If requiredMode is different than last confirmed mode\nif (requiredMode !== lastMode) {\n    // Are we already transitioning to this new mode?\n    if (tempState.mode !== requiredMode) {\n        // First time detecting mode change – start timer\n        context.set('tempState', {\n            mode: requiredMode,\n            changeTime: now\n        });\n        node.status({ fill: 'yellow', shape: 'ring', text: `${currentState} (${requiredMode}) - waiting` });\n        return null;\n    }\n\n    // Already transitioning – check if delay elapsed\n    const elapsed = now - lastChangeTime;\n    if (elapsed < DELAY_MS) {\n        const remainingSec = Math.ceil((DELAY_MS - elapsed) / 1000);\n        node.status({ fill: 'yellow', shape: 'ring', text: `${currentState} (${requiredMode}) - ${remainingSec}s left` });\n        return null;\n    }\n\n    // Delay elapsed – commit the mode\n    context.set('tempState', {\n        mode: requiredMode,\n        changeTime: lastChangeTime\n    });\n\n    node.status({ fill: 'green', shape: 'dot', text: `${currentState} (${requiredMode}) - confirmed` });\n\n    if (requiredMode === 'off') return [msg, null];\n    msg.requiredMode = requiredMode;\n    return [null, msg];\n}\n\n// No change needed – mode stable\nnode.status({ fill: 'green', shape: 'dot', text: `${currentState} (${requiredMode}) - stable` });\n\nif (requiredMode === 'off') return [msg, null];\nmsg.requiredMode = requiredMode;\nreturn [null, msg];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 200,
+        "wires": [
+            [
+                "3849457593f9edf3"
+            ],
+            [
+                "37d368ebaa563420"
+            ]
+        ]
+    },
+    {
+        "id": "f3248e174393e3ee",
+        "type": "api-call-service",
+        "z": "a690123d05be35bf",
+        "name": "AC Off",
+        "server": "2f5e82bb.678dde",
+        "version": 7,
+        "debugenabled": false,
+        "action": "switch.turn_off",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.air_conditioner_switch"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "switch",
+        "service": "turn_off",
+        "x": 1270,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "5f5f09b05da2cecb",
+        "type": "api-call-service",
+        "z": "a690123d05be35bf",
+        "name": "AC On",
+        "server": "2f5e82bb.678dde",
+        "version": 7,
+        "debugenabled": false,
+        "action": "switch.turn_on",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.air_conditioner_switch"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "switch",
+        "service": "turn_on",
+        "x": 1410,
+        "y": 240,
+        "wires": [
+            [
+                "1873a2c269949ecc"
+            ]
+        ]
+    },
+    {
+        "id": "3849457593f9edf3",
+        "type": "api-current-state",
+        "z": "a690123d05be35bf",
+        "name": "AC Switch State",
+        "server": "2f5e82bb.678dde",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "switch.air_conditioner_switch",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 960,
+        "y": 140,
+        "wires": [
+            [
+                "0a11faafa2668a22"
+            ]
+        ]
+    },
+    {
+        "id": "37d368ebaa563420",
+        "type": "api-current-state",
+        "z": "a690123d05be35bf",
+        "name": "AC Switch State",
+        "server": "2f5e82bb.678dde",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "switch.air_conditioner_switch",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 960,
+        "y": 260,
+        "wires": [
+            [
+                "90fcd28915447102"
+            ]
+        ]
+    },
+    {
+        "id": "0a11faafa2668a22",
+        "type": "switch",
+        "z": "a690123d05be35bf",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "on",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "off",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1130,
+        "y": 140,
+        "wires": [
+            [
+                "f3248e174393e3ee"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "90fcd28915447102",
+        "type": "switch",
+        "z": "a690123d05be35bf",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "on",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "off",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1130,
+        "y": 260,
+        "wires": [
+            [],
+            [
+                "15e95ab920a3b602"
+            ]
+        ]
+    },
+    {
+        "id": "a9d4103e6171d83c",
+        "type": "api-current-state",
+        "z": "a690123d05be35bf",
+        "name": "AC Bypass Toggle",
+        "server": "2f5e82bb.678dde",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "off",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "input_boolean.ac_bypass",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 430,
+        "y": 160,
+        "wires": [
+            [
+                "196421be800365f0"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "6c04bdf0ba7d323b",
+        "type": "time-range-switch",
+        "z": "a690123d05be35bf",
+        "name": "Time",
+        "lat": "",
+        "lon": "",
+        "startTime": "08:00",
+        "endTime": "23:00",
+        "startOffset": 0,
+        "endOffset": 0,
+        "x": 250,
+        "y": 180,
+        "wires": [
+            [
+                "a9d4103e6171d83c"
+            ],
+            [
+                "bebdae90a8928f47"
+            ]
+        ]
+    },
+    {
+        "id": "92118808320f62ec",
+        "type": "inject",
+        "z": "a690123d05be35bf",
+        "name": "5 Seconds",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 110,
+        "y": 180,
+        "wires": [
+            [
+                "6c04bdf0ba7d323b"
+            ]
+        ]
+    },
+    {
+        "id": "f576bef1375c96be",
+        "type": "api-call-service",
+        "z": "a690123d05be35bf",
+        "name": "Cool",
+        "server": "2f5e82bb.678dde",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.set_temperature",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.air_conditioner"
+        ],
+        "labelId": [],
+        "data": "{\"temperature\": 18}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "set_temperature",
+        "x": 1930,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "1873a2c269949ecc",
+        "type": "api-call-service",
+        "z": "a690123d05be35bf",
+        "name": "Heat",
+        "server": "2f5e82bb.678dde",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.set_temperature",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.air_conditioner"
+        ],
+        "labelId": [],
+        "data": "{\"temperature\": 31}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "set_temperature",
+        "x": 1650,
+        "y": 240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "154b6a899a779447",
+        "type": "inject",
+        "z": "a690123d05be35bf",
+        "name": "Daily Reset",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "59 06 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 110,
+        "y": 360,
+        "wires": [
+            [
+                "2d8cf71b96cce416"
+            ]
+        ]
+    },
+    {
+        "id": "2d8cf71b96cce416",
+        "type": "function",
+        "z": "a690123d05be35bf",
+        "name": "Send Reset",
+        "func": "msg.topic = 'daily_reset';\nmsg.payload = 'reset';\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 270,
+        "y": 360,
+        "wires": [
+            [
+                "b4d9205d25799752"
+            ]
+        ]
+    },
+    {
+        "id": "735c7fb21df2cf7a",
+        "type": "api-current-state",
+        "z": "a690123d05be35bf",
+        "name": "Outside Temp",
+        "server": "2f5e82bb.678dde",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "15",
+        "halt_if_type": "num",
+        "halt_if_compare": "gte",
+        "entity_id": "sensor.gw1100a_outdoor_temperature",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 1440,
+        "y": 320,
+        "wires": [
+            [
+                "df44e4a9e5abf28d"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "df44e4a9e5abf28d",
+        "type": "switch",
+        "z": "a690123d05be35bf",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "lte",
+                "v": "17",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1650,
+        "y": 320,
+        "wires": [
+            [],
+            [
+                "30a0aa486b1e04cf"
+            ]
+        ]
+    },
+    {
+        "id": "15e95ab920a3b602",
+        "type": "switch",
+        "z": "a690123d05be35bf",
+        "name": "",
+        "property": "requiredMode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "heating",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "cooling",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1270,
+        "y": 280,
+        "wires": [
+            [
+                "5f5f09b05da2cecb"
+            ],
+            [
+                "735c7fb21df2cf7a"
+            ]
+        ]
+    },
+    {
+        "id": "30a0aa486b1e04cf",
+        "type": "api-call-service",
+        "z": "a690123d05be35bf",
+        "name": "AC On",
+        "server": "2f5e82bb.678dde",
+        "version": 7,
+        "debugenabled": false,
+        "action": "switch.turn_on",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.air_conditioner_switch"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "switch",
+        "service": "turn_on",
+        "x": 1790,
+        "y": 340,
+        "wires": [
+            [
+                "f576bef1375c96be"
+            ]
+        ]
+    },
+    {
+        "id": "75a8add2c666196d",
+        "type": "api-call-service",
+        "z": "a690123d05be35bf",
+        "name": "AC Off",
+        "server": "2f5e82bb.678dde",
+        "version": 7,
+        "debugenabled": false,
+        "action": "switch.turn_off",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.air_conditioner_switch"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "switch",
+        "service": "turn_off",
+        "x": 950,
+        "y": 400,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "bebdae90a8928f47",
+        "type": "api-current-state",
+        "z": "a690123d05be35bf",
+        "name": "AC Bypass Toggle",
+        "server": "2f5e82bb.678dde",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "off",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "input_boolean.ac_bypass",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 430,
+        "y": 240,
+        "wires": [
+            [
+                "d3738491a64139d6"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "d3738491a64139d6",
+        "type": "api-current-state",
+        "z": "a690123d05be35bf",
+        "name": "AC Switch State",
+        "server": "2f5e82bb.678dde",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "switch.air_conditioner_switch",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 640,
+        "y": 280,
+        "wires": [
+            [
+                "bfe339a00cabbb94"
+            ]
+        ]
+    },
+    {
+        "id": "bfe339a00cabbb94",
+        "type": "switch",
+        "z": "a690123d05be35bf",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "on",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "off",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 810,
+        "y": 320,
+        "wires": [
+            [
+                "75a8add2c666196d"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "2f5e82bb.678dde",
+        "type": "server",
+        "name": "Home Assistant",
+        "addon": true,
+        "rejectUnauthorizedCerts": true,
+        "ha_boolean": "",
+        "connectionDelay": false,
+        "cacheJson": false,
+        "heartbeat": false,
+        "heartbeatInterval": "",
+        "areaSelector": "friendlyName",
+        "deviceSelector": "friendlyName",
+        "entitySelector": "friendlyName",
+        "statusSeparator": ",",
+        "statusTimeFormat": "h:m:s",
+        "enableGlobalContextStore": true
+    },
+    {
+        "id": "fb239f7b545dc85b",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-home-assistant-websocket": "0.80.3",
+            "node-red-contrib-time-range-switch": "1.2.0"
+        }
+    }
+]

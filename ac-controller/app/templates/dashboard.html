@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 class="text-xl font-bold mb-6">Dashboard</h1>
+
+<!-- Status card — HTMX swaps this div on button clicks and WS updates -->
+<div id="status-card" class="rounded-2xl bg-gray-800/60 border border-gray-700 p-6 mb-6">
+  {% include "fragments/status_card.html" %}
+</div>
+
+<!-- Setpoints form -->
+<div class="rounded-2xl bg-gray-800/60 border border-gray-700 p-6 mb-6">
+  <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-4">Setpoints</h2>
+  <form hx-post="/action/setpoints" hx-target="#status-card" hx-swap="outerHTML"
+        class="flex flex-wrap gap-4 items-end">
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-gray-400">Heat below (°C)</span>
+      <input type="number" name="heat_below" step="0.5" min="10" max="30"
+             value="{{ '%.1f'|format(cfg.control.heat_below) }}"
+             class="w-28 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-gray-400">Cool above (°C)</span>
+      <input type="number" name="cool_above" step="0.5" min="10" max="35"
+             value="{{ '%.1f'|format(cfg.control.cool_above) }}"
+             class="w-28 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+    </label>
+    <button type="submit"
+      class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition">
+      Apply
+    </button>
+  </form>
+</div>
+
+<!-- Status bar -->
+<div class="text-xs text-gray-500 flex gap-4 flex-wrap">
+  <span>Schedule: {% if cfg.schedule.enabled %}<span class="text-green-400">{{ cfg.schedule.start }}–{{ cfg.schedule.end }}</span>{% else %}<span class="text-gray-500">disabled</span>{% endif %}</span>
+  <span>Bypass: {% if state.bypass_on %}<span class="text-green-400">on</span>{% else %}<span class="text-red-400">off</span>{% endif %}</span>
+  <span>Debounce: {{ cfg.control.debounce_seconds }}s</span>
+  <span>Min cycle: {{ cfg.control.min_cycle_seconds }}s</span>
+  <span>Outdoor gate: {% if cfg.cooling_outdoor_gate.enabled %}&gt;{{ cfg.cooling_outdoor_gate.min_outdoor_c }}°C{% else %}off{% endif %}</span>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Live update just the temps and badges without a full HTMX swap
+  // (full status-card re-render happens on actions; WS handles live display)
+  window.onAcState = function (s) {
+    const fmt = v => v !== null && v !== undefined ? v.toFixed(1) + '°C' : '—';
+
+    const rt = document.getElementById('room-temp');
+    if (rt) rt.textContent = fmt(s.room_temp);
+
+    const ot = document.getElementById('outdoor-temp');
+    if (ot) ot.textContent = fmt(s.outdoor_temp);
+  };
+</script>
+{% endblock %}
