@@ -8,7 +8,7 @@ State machine:
 
 Decision priority (highest overrides lower):
   1. HA WebSocket disconnected  → no new commands (leave AC as-is)
-  2. bypass input_boolean OFF   → force OFF
+  2. bypass input_boolean ON    → hold current (user has taken manual control)
   3. Outside schedule window    → force OFF
   4. Sensor stale               → force OFF + alarm
   5. Manual override (non-auto) → commit override
@@ -112,8 +112,8 @@ class Controller:
                 log.warning("Bad outdoor_temp value: %r", state)
 
         elif entity_id == entities.bypass:
-            # bypass ON  = automation active (pass-through)
-            # bypass OFF = user has disabled automation
+            # bypass ON  = user has bypassed automation (hold, don't control)
+            # bypass OFF = automation runs normally
             self.state.bypass_on = state.lower() == "on"
 
         # Always re-decide on any relevant entity change
@@ -173,10 +173,10 @@ class Controller:
             self.state.reason = "HA disconnected — holding"
             return self.state.committed_mode
 
-        # Priority 2: bypass off
-        if not self.state.bypass_on:
-            self.state.reason = "bypass off"
-            return Mode.OFF
+        # Priority 2: bypass ON = user has taken manual control, hold current
+        if self.state.bypass_on:
+            self.state.reason = "bypass active — holding"
+            return self.state.committed_mode
 
         # Priority 3: outside schedule
         if not self.state.in_schedule:

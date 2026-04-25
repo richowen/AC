@@ -35,7 +35,7 @@ class ControllerState(BaseModel):
     last_committed_at: Optional[float] = None  # epoch seconds
 
     # Flags
-    bypass_on: bool = True  # True = automation enabled (bypass input_boolean is ON)
+    bypass_on: bool = False  # True = bypass active (automation holds); False = automation runs
     in_schedule: bool = True
     sensor_stale: bool = False
     ha_connected: bool = False
