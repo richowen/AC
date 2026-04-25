@@ -6,3 +6,4 @@ pydantic-settings==2.6.1
 PyYAML==6.0.2
 Jinja2==3.1.4
 aiosqlite==0.20.0
+python-multipart==0.0.12
